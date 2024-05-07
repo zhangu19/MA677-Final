@@ -1,0 +1,323 @@
+---
+title: "Study Notes on CASI Chapter 6: Empirical Bayes"
+author: "Zhan Gu"
+date: "2024-05-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Chapter 6 Summary
+
+In Chapter 6 of "Computer Age Statistical Inference," the authors introduce Empirical Bayes methods, which refine classical statistical techniques using modern computation. The chapter provides a historical perspective and discusses the significance of these methods in handling large datasets, such as insurance claims data. Empirical Bayes methods allow for robust estimation even without complete prior distribution information, leveraging the aggregate data to inform individual estimates.
+
+-   Discussion of Robbins' formula for estimating the number of future occurrences (e.g., insurance claims) based on past data.
+Illustrates the use of Poisson distributions in empirical settings, providing a foundational example of empirical Bayes in action.
+
+-   Explores a real-world application of Empirical Bayes in estimating the number of unseen species in ecological studies. Uses historical trapping data to predict unobserved species, demonstrating the power of empirical Bayes in biodiversity research. This application underscores the utility of Empirical Bayes in fields with incomplete data coverage.
+
+-   Applies empirical Bayes to the analysis of lymph node data from cancer surgeries. Employs a binomial model to estimate the probability of cancer presence in removed lymph nodes. Highlights the relevance of empirical Bayes methods in providing robust estimates in medical statistics, potentially impacting treatment decisions.
+
+-   Discusses the integration of direct and indirect evidence in statistical analysis using empirical Bayes. Stresses the importance of using both types of evidence for more comprehensive statistical conclusions.
+
+-   Provides additional insights into the historical development, technical details, and broader implications of empirical Bayes methods. Mentions significant contributions from key figures like Robbins and Good, and discusses methodological advancements.
+
+## 6.1 Robbins' Formula
+
+This section focuses on Robbins' formula, a crucial component of Empirical Bayes methods. The section begins by introducing the concept of Empirical Bayes, emphasizing its utility in estimating parameters when individual prior information is sparse but aggregate data is plentiful. Robbins' formula, specifically, is presented as a method for estimating the number of future insurance claims based on historical data. This technique employs the concept of marginal densities and the properties of Poisson distributions to estimate expected future claims.
+
+### Definitions and Techniques
+
+-   **Empirical Bayes**: A statistical method that uses empirical data to update priors in Bayesian inference.
+-   **Robbins' Formula**: A specific Empirical Bayes technique for estimating future outcomes based on observed data, calculated using the formula: $$
+    E[\theta|x] = (x + 1) \frac{f(x + 1)}{f(x)}
+    $$ where $f(x)$ is the frequency of observing $x$ events.
+-   **Poisson Distribution**: Used here to model the number of claims per policyholder, where the parameter $\theta$ varies between individuals but is not directly observed.
+-   **Gamma Distribution**: Often assumed as a prior in Bayesian inference within this context, which influences the estimation of $\theta$.
+
+### Comments and Questions
+
+-   **Application Scope**: The use of Poisson and Gamma distributions is apt for the insurance claim data, but how robust is Robbins' formula when applied to datasets that might not fit these distributions well?
+-   **Model Assumptions**: What are the assumptions necessary for the Gamma-Poisson model to hold true, and what are the implications if these assumptions are violated?
+-   **Future Claims Prediction**: How does this model handle extreme values or outliers in data, such as policyholders with unusually high numbers of claims?
+
+### Robbins' Formula Application
+
+To demonstrate an application of Robbins' Formula ,we will create a hypothetical dataset that mimics the insurance claims data mentioned in the section, and use `stats` and `MASS` packages.
+
+```{r}
+library(MASS)
+# Sample dataset similar to the insurance claims data
+claims_data <- data.frame(
+  claims = 0:7,
+  count = c(7840, 1317, 239, 42, 14, 4, 4, 1)
+)
+
+# Total number of policy holders
+total_policies <- sum(claims_data$count)
+```
+
+We start by calculating the empirical frequencies, and assuming a Poisson distribution.
+
+```{r}
+# Calculate empirical frequencies
+claims_data$proportion <- claims_data$count / total_policies
+
+# Assuming the simplest form where the expected number of claims follows a Poisson process
+# Fit a Poisson distribution to get estimates of lambda (rate of claims)
+lambda_estimate <- sum(claims_data$claims * claims_data$proportion)
+```
+
+Robbins' formula requires calculating the empirical Bayes estimate based on the observed data frequencies.
+
+```{r}
+# Calculate f(x) for current and the next claim count
+claims_data$f_x <- claims_data$proportion
+claims_data$f_x_plus_1 <- c(claims_data$proportion[-1], 0)  # adjust for shift
+
+# Applying Robbins' formula: E(θ|x) = (x + 1) * f(x + 1) / f(x)
+claims_data$robbins_estimate <- (claims_data$claims + 1) * claims_data$f_x_plus_1 / claims_data$f_x
+print(claims_data)
+```
+
+### Underlying Mathematics
+
+A Poisson distribution is typically used to model the number of times an event happens in a fixed interval of time or space, and is defined by: $$
+P(X = k) = e^{-\lambda} \frac{\lambda^k}{k!}
+$$ where: - $X$ is the number of events, - $k$ is a non-negative integer, - $\lambda$ is the average number of events per interval (rate parameter).
+
+When dealing with Bayesian approaches, the Gamma distribution often serves as a prior distribution for the rate parameter $\lambda$ of a Poisson distribution due to its conjugate properties, which simplify the Bayesian updating process. The Gamma distribution is given by: $$
+f(\theta; \alpha, \beta) = \frac{\beta^\alpha}{\Gamma(\alpha)} \theta^{\alpha-1} e^{-\beta\theta}
+$$ where: - $\theta$ is the variable (rate parameter in our context), - $\alpha$ and $\beta$ are the shape and rate parameters of the Gamma distribution, - $\Gamma(\alpha)$ is the Gamma function at $\alpha$.
+
+Robbins' formula integrates these concepts to provide an empirical method to estimate future outcomes based on observed data:
+
+1.  **Starting from Bayes' Theorem**: Bayes' theorem states that:
+
+    $$
+    P(\theta | x) = \frac{P(x | \theta) P(\theta)}{P(x)}
+    $$
+
+    where $P(\theta | x)$ is the posterior distribution of $\theta$, $P(x | \theta)$ is the likelihood of $x$ given $\theta$ (modeled by the Poisson distribution), and $P(\theta)$ is the prior distribution of $\theta$ (modeled by the Gamma distribution).
+
+2.  **Expectation under the Posterior**: The expected value of $\theta$ given $x$ (posterior mean) can be calculated as:
+
+    $$
+    E[\theta | x] = \int \theta \frac{P(x | \theta) P(\theta)}{P(x)} d\theta
+    $$
+
+    Using the properties of Poisson and Gamma distributions, this integral simplifies under the conjugate prior scenario, leading directly to the updated estimates of $\theta$.
+
+3.  **Robbins' Estimator**: Robbins' formula derives an estimator for $E[\theta | x]$ that doesn't require prior knowledge of the distribution parameters but uses empirical data:
+
+    $$
+    E[\theta | x] = (x + 1) \frac{f(x + 1)}{f(x)}
+    $$
+
+    This formula comes from the empirical observation that the ratio of the increment in counts should reflect the likelihood of additional events given past events.
+
+### Historical Context
+
+Empirical Bayes methods represent an important class of statistical techniques that bridge the gap between traditional frequentist approaches and fully Bayesian methodologies. The historical development of these methods is tied to the work of Herbert Robbins in the 1950s, who introduced the concept of an "empirical Bayes" approach.
+
+-   **1950s**: Herbert Robbins published his seminal paper on an approach to Bayesian statistics that did not require the full specification of a prior distribution. Instead, Robbins suggested using data to estimate the prior, which was revolutionary because it combined frequentist properties with Bayesian inference (Robbins, 1955).
+
+-   **1960s and 1970s**: The development of computational technology and the increasing availability of large datasets provided a fertile ground for the application of Robbins' ideas. Researchers began to apply these concepts to a variety of fields, from genetics to economics, where large amounts of data were common but complete theoretical models were not. Bradley Efron expanded on Robbins' ideas, developing them further with the introduction of the bootstrap method, which also relies on the data itself to provide statistical inference (Efron, 1979).
+
+-   **Late 20th Century**: The advent of powerful computers and sophisticated software made it feasible to apply empirical Bayes methods to very large datasets. This period saw a significant shift from theoretical development to practical, computational applications.
+
+-   **21st Century**: Today, Empirical Bayes methods are integral to many areas of statistical analysis, especially in fields like bioinformatics, where they are used to make sense of vast amounts of genomic data.
+
+### Statistical Practice Implications
+
+Empirical Bayes methods, particularly Robbins' formula, have broad applications across multiple sectors.
+
+-   **Insurance Industry**
+Claims Adjustment: Empirical Bayes methods are used extensively in the insurance industry to predict the number of future claims based on past data. This allows insurance companies to adjust their reserve funds accurately and price policies more effectively. By applying Robbins' formula, companies can refine their estimates based on the historical claims data, leading to more financially stable insurance operations.
+
+-   **Healthcare**
+Disease Prevalence Estimation: In healthcare analytics, Empirical Bayes methods help estimate disease prevalence from incomplete data or small sample sizes, often encountered in epidemiological studies. Robbins' formula can be used to adjust estimates of disease rates in different populations, improving the accuracy of public health initiatives and resource allocation.
+
+-   **Sports Analytics**
+Player Performance Evaluation: Sports analysts use Empirical Bayes techniques to adjust player statistics to account for variability in performance due to different game conditions or opponents. This approach provides a more accurate assessment of a player’s true skill level, influencing team strategy and player recruitment.
+
+Empirical Bayes methods have significantly influenced modern statistical practice by providing a flexible framework that combines the strengths of Bayesian and frequentist approaches. This hybrid approach allows statisticians to make inferences with less prior information than typically required by traditional Bayesian methods, making statistical analysis more accessible and applicable in real-world situations where exact priors are unknown. Empirical Bayes methods are likely to continue evolving with advancements in computational power and data availability.
+
+-   **Integration with Machine Learning**: As machine learning continues to advance, there is potential for integrating Empirical Bayes methods with machine learning algorithms to create hybrid models that can learn complex patterns from data while incorporating prior knowledge effectively.
+
+-   **Big Data Applications**: The scalability of Empirical Bayes methods makes them particularly suitable for big data applications. As data volumes grow, these methods can provide robust, computationally efficient tools for data analysis across various sectors.
+
+## 6.2 The Missing-Species Problem
+
+This section explores an early application of Empirical Bayes methods to ecological data collected by Alexander Corbet in Malaysia during World War II. Corbet's data consisted of the number of butterfly species trapped a certain number of times over two years. A significant challenge was predicting the number of new species that might be discovered with continued trapping efforts, addressing species that had not been observed at all during the initial period.
+
+-   **Data Overview**: Corbet trapped varying numbers of 118 species just once, 74 species twice, and so on, with some species being more common and others exceedingly rare.
+-   **Statistical Challenge**: Estimating the number of unseen species based on the observed data, a problem typical in ecological studies where not all species in a region are likely to be observed.
+-   **Solution**: R.A. Fisher tackled this problem by employing Empirical Bayes methods, using a Poisson model to estimate the likelihood of observing new species.
+
+Empirical Bayes techniques were applied to estimate the number of species not yet observed. Fisher's approach used the Poisson distribution to model the probability of encountering each species, assuming the number of encounters (trappings) followed a Poisson process. A similar dataset using R to understand the dynamics of the missing-species estimation is given below:
+
+```{r}
+# Simulating the trapping data using Poisson distribution
+set.seed(123)
+species_counts <- rpois(300, lambda = 0.5)  # Simulate trapping counts for 300 species
+table_counts <- table(species_counts)  # Frequency of each trapping count
+
+# Estimating the number of species not observed
+total_species <- length(species_counts)
+observed_species <- sum(species_counts > 0)
+unseen_species_estimate <- total_species - observed_species
+unseen_species_estimate
+```
+
+## 6.3 A Medical Example
+
+This section discusses a medical study involving the removal of lymph nodes during cancer surgeries. The data consists of the number of nodes removed and the number found to be positive (malignant) across 844 surgeries. The primary statistical challenge addressed here is the estimation of the true probability of a node being malignant for each patient, using an Empirical Bayes approach.
+
+-   **Data Description**: The surgeries reported varying numbers of nodes removed, with a substantial proportion of the ratios of positive findings (malignant nodes to total nodes removed) being zero, indicating many surgeries did not find any malignant nodes.
+
+-   **Statistical Modeling**: The analysis assumes that the number of positive findings follows a binomial distribution, which leads to estimating the proportion of positive nodes for each patient as a ratio.
+
+-   **Empirical Bayes Analysis**: The section introduces a Bayesian approach, beginning with a presumed prior density for the probability values and adjusting this based on the observed data. It discusses using a polynomial model for the log odds of the prior distribution and employing maximum likelihood for parameter estimation.
+
+Empirical Bayes methods were utilized to analyze the variability in malignancy rates across surgeries. This section provides an R script that simulates similar analysis based on hypothetical data mimicking the distribution and characteristics described.
+
+```{r}
+# Simulate data
+set.seed(123)
+n_patients <- 844
+nodes_removed <- rpois(n_patients, 20)  # Poisson-distributed number of nodes removed
+true_prob <- rbeta(n_patients, 2, 10)  # Beta-distributed true probabilities of malignancy
+nodes_positive <- rbinom(n_patients, nodes_removed, true_prob)  # Binomial-distributed outcome
+
+# Calculate the observed probability for each patient
+observed_prob <- nodes_positive / nodes_removed
+
+# Plotting the histogram of observed probabilities
+hist(observed_prob, breaks=20, main="Histogram of Observed Malignancy Probabilities",
+     xlab="Observed Probability", col="darkgreen")
+```
+
+The analysis assumes that the number of positive nodes follows a binomial distribution, reflecting the random process of cancer presence in the nodes. The Empirical Bayes approach estimates individual patient probabilities based on observed data, leveraging a prior distribution that captures the variability across the patient population.
+
+The primary assumption is that the number of malignant nodes found in each surgery can be modeled using a binomial distribution. This is appropriate under the assumption that each node has an independent and identical chance of being malignant.
+
+#### Model Formulation
+
+Each patient \( k \) has \( n_k \) lymph nodes removed, and \( x_k \) of these are found to be malignant. The likelihood that \( x_k \) nodes are malignant out of \( n_k \) tested can be modeled as:
+
+$$
+X_k \sim \text{Bin}(n_k, \theta_k)
+$$
+
+where:
+- \( X_k \) is the number of malignant nodes,
+- \( n_k \) is the total number of nodes removed,
+- \( \theta_k \) is the true but unknown probability of finding a malignant node in patient \( k \).
+
+#### Empirical Bayes Estimation
+
+Given the binomial model, the goal is to estimate \( \theta_k \), the probability of malignancy, for each patient. An Empirical Bayes approach is particularly suitable here because it allows us to borrow strength across the experiences of all patients to improve individual estimates.
+
+#### Prior and Posterior Distributions
+
+We start by assuming a prior distribution for \( \theta_k \), often based on historical data or external studies. In this example, we consider the prior density \( g(\theta) \), which might be assumed to follow a certain parametric form based on expert knowledge or previous research.
+
+Given the observed data \( x_k \) from the binomial distribution, the posterior distribution of \( \theta_k \) can be updated using Bayes' rule:
+
+$$
+g(\theta_k | x_k, n_k) \propto \text{Bin}(x_k | n_k, \theta_k) \times g(\theta_k)
+$$
+
+This posterior distribution combines our prior belief about the distribution of \( \theta_k \) with the observed data to provide a refined estimate.
+
+#### Computational Implementation
+
+The integration of the likelihood and the prior through the posterior distribution often requires numerical methods, especially when the prior is complex or non-conjugate. In R, this can typically be handled using packages that perform numerical integration or optimization to estimate the parameters.
+
+
+```{r}
+# Assuming a simple beta prior for demonstration
+alpha_prior <- 2
+beta_prior <- 5
+
+# Mock data for one patient
+n_k <- 10  # nodes removed
+x_k <- 3   # nodes found malignant
+
+# Update the prior based on the data using the beta-binomial conjugacy
+alpha_post <- alpha_prior + x_k
+beta_post <- beta_prior + n_k - x_k
+
+# Plot the posterior distribution
+theta <- seq(0, 1, length.out = 100)
+posterior <- dbeta(theta, alpha_post, beta_post)
+plot(theta, posterior, type = 'l', col = 'blue', lwd = 2,
+     main = "Posterior Distribution of Malignancy Probability",
+     xlab = "Probability", ylab = "Density")
+```
+
+Empirical Bayes methods have seen increasing application in medical statistics, particularly as data availability has grown with electronic medical records. This section's example reflects a broader trend towards data-driven, personalized medicine, where statistical methods like Empirical Bayes enable more nuanced interpretations of patient-specific data, potentially leading to better patient outcomes.
+
+-   **Evolution from Traditional to Modern Statistical Techniques**: From simpler, more uniform statistical approaches to complex, adaptive models that account for individual variability.
+
+-   **Integration in Clinical Practice**: These methods are increasingly influencing clinical decision-making, showing how statistical innovations can directly impact patient care and treatment strategies.
+
+## 6.4 Indirect Evidence 1
+
+This section explores the concept of using both direct and indirect evidence in the framework of empirical Bayes methods. The section discusses how traditional statistical methods often rely heavily on direct evidence while potentially underutilizing valuable indirect evidence, such as historical data or prior scientific knowledge.
+
+- **Statistical Argument**: Defined as a combination of many pieces of evidence, not all of which may directly support one another, to reach a comprehensive conclusion.
+- **Empirical Bayes Approach**: Emphasizes modifying the traditional Bayesian framework by dynamically adjusting the prior based on observed data, thus integrating both direct and indirect evidence more effectively.
+
+Empirical Bayes methods are particularly adept at handling large datasets where direct evidence may be complemented with substantial indirect evidence. Below is an R script that demonstrates a basic empirical Bayesian update:
+
+```{r}
+# Assume prior distribution for a parameter theta based on historical data
+prior_mean <- 0.5
+prior_variance <- 0.1
+prior_distribution <- function(theta) {
+  return(dnorm(theta, mean = prior_mean, sd = sqrt(prior_variance)))
+}
+
+# Assume we observe some data that suggests a different mean
+observed_mean <- 0.6
+sample_size <- 30
+observed_variance <- 0.05
+
+# Update the prior with the observed data using a conjugate Bayesian update
+# For simplicity, assuming normal distribution for both prior and likelihood
+posterior_mean <- (prior_variance * observed_mean + observed_variance * prior_mean) / (prior_variance + observed_variance)
+posterior_variance <- (prior_variance * observed_variance) / (prior_variance + observed_variance)
+
+# Plot the prior and posterior distributions
+theta_values <- seq(0, 1, length.out = 100)
+plot(theta_values, prior_distribution(theta_values), type = 'l', col = 'blue', lwd = 2, ylim = c(0, 10), ylab = 'Density', xlab = 'Theta', main = 'Prior and Posterior Distributions')
+lines(theta_values, dnorm(theta_values, mean = posterior_mean, sd = sqrt(posterior_variance)), col = 'red', lwd = 2)
+legend("topright", legend=c("Prior", "Posterior"), col=c("blue", "red"), lwd=2)
+```
+
+## 6.5 Notes and Details
+
+This section offers a deeper dive into the empirical Bayes methodology, providing historical context, technical nuances, and additional insights into its application. This section revisits the foundational ideas introduced by Robbins in 1956 and explores the evolution of these concepts through modern statistical practices.
+
+The development of empirical Bayes methods is intertwined with the broader history of statistical thought, reflecting shifts from purely frequentist approaches to more data-driven Bayesian techniques.
+
+-   **Robbins' Contribution**: The inception of empirical Bayes under Robbins' guidance and its philosophical underpinnings.
+-   **Evolution Over Decades**: How empirical Bayes has adapted to the challenges presented by increasing data availability and computational resources.
+
+Empirical Bayes methods have profound implications for statistical practice, particularly in how statisticians approach problems involving large, complex datasets or where traditional methods fall short.
+
+-   **Enhanced Decision Making**: How empirical Bayes aids in making better-informed decisions in medicine, finance, and public policy.
+-   **Influence on Modern Statistics**: The impact of empirical Bayes on contemporary statistical methodologies and its integration into mainstream statistical software and practices.
+
+## References
+
+-   Efron, B., & Hastie, T. (2016). Computer Age Statistical Inference: Algorithms, Evidence, and Data Science.
+
+-   Efron, B. (1979). Bootstrap Methods: Another Look at the Jackknife. The Annals of Statistics.
+
+-   Robbins, H. (1955). An Empirical Bayes Approach to Statistics. Proceedings of the Third Berkeley Symposium on Mathematical Statistics and Probability.
+
